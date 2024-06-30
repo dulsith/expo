@@ -1,3 +1,4 @@
+import { SharedObject } from 'expo';
 export type ImageResult = {
     /**
      * An URI to the modified image (usable as the source for an `Image` or `Video` element).
@@ -99,4 +100,24 @@ export type SaveOptions = {
      */
     format?: SaveFormat;
 };
+/**
+ * @platform ios
+ */
+export declare class Context extends SharedObject {
+    resize(size: ActionResize['resize']): Context;
+    rotate(degrees: ActionRotate['rotate']): Context;
+    flip(flipType: FlipType): Context;
+    crop(rect: ActionCrop['crop']): Context;
+    renderAsync(): Promise<ImageRef>;
+}
+/**
+ * @platform ios
+ */
+export declare class ImageRef extends SharedObject {
+    width: number;
+    height: number;
+    saveAsync(options: SaveOptions): {
+        path: string;
+    } & ImageResult;
+}
 //# sourceMappingURL=ImageManipulator.types.d.ts.map

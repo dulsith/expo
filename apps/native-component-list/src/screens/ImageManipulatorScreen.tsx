@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Asset } from 'expo-asset';
-import * as ImageManipulator from 'expo-image-manipulator';
+import ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useReducer } from 'react';
 import {
@@ -19,6 +19,8 @@ interface State {
   ready: boolean;
   image?: Asset | ImageManipulator.ImageResult | ImagePicker.ImagePickerAsset;
   original?: Asset;
+  imagePath?: string;
+  context?: ImageManipulator.Context;
 }
 
 ImageManipulatorScreen.navigationOptions = {
@@ -32,11 +34,15 @@ export default function ImageManipulatorScreen() {
 
   useEffect(() => {
     const image = Asset.fromModule(require('../../assets/images/example2.jpg'));
+
     image.downloadAsync().then(() => {
+      const context = ImageManipulator.loadImage(image.uri);
+
       setState({
         ready: true,
         image,
         original: image,
+        context,
       });
     });
   }, []);
@@ -71,29 +77,65 @@ export default function ImageManipulatorScreen() {
     setState({ image: result.assets[0] });
   };
 
-  const rotate = async (deg: number) =>
-    await manipulate([{ rotate: deg }], {
-      format: ImageManipulator.SaveFormat.PNG,
-    });
+  const rotate = async (deg: number) => {
+    // await manipulate([{ rotate: deg }], {
+    //   format: ImageManipulator.SaveFormat.PNG,
+    // });
+    const image = await ImageManipulator.default
+      .load(state.image!.uri!)
+      .rotate(deg)
+      .generateAsync();
+    const saveResult = await image.saveAsync({});
+    setState({ image: saveResult });
+  };
 
-  const resize = async (size: { width?: number; height?: number }) =>
-    await manipulate([{ resize: size }]);
+  const resize = async (size: { width?: number; height?: number }) => {
+    // await manipulate([{ resize: size }]);
+    const image = await ImageManipulator.default
+      .load(state.image!.uri!)
+      .resize(size)
+      .generateAsync();
+    const saveResult = await image.saveAsync({});
+    setState({ image: saveResult });
+  };
 
-  const flip = async (flip: ImageManipulator.FlipType) => await manipulate([{ flip }]);
+  const flip = async (flip: ImageManipulator.FlipType) => {
+    // await manipulate([{ flip }]);
+    const image = await ImageManipulator.default.load(state.image!.uri).flip(flip).generateAsync();
+    const saveResult = await image.saveAsync({});
+    setState({ image: saveResult });
+  };
 
-  const compress = async (compress: number) => await manipulate([], { compress });
+  const compress = async (compress: number) => {
+    // await manipulate([], { compress });
+    const image = await ImageManipulator.default.load(state.image!.uri).generateAsync();
+    const saveResult = await image.saveAsync({ compress });
+    setState({ image: saveResult });
+  };
 
-  const crop = async () =>
-    await manipulate([
-      {
-        crop: {
-          originX: 0,
-          originY: 0,
-          width: state.image!.width! / 2,
-          height: state.image!.height!,
-        },
-      },
-    ]);
+  const crop = async () => {
+    // await manipulate([
+    //   {
+    //     crop: {
+    //       originX: 0,
+    //       originY: 0,
+    //       width: state.image!.width! / 2,
+    //       height: state.image!.height!,
+    //     },
+    //   },
+    // ]);
+    const image = await ImageManipulator.default
+      .load(state.image!.uri)
+      .crop({
+        originX: 0,
+        originY: 0,
+        width: state.image!.width! / 2,
+        height: state.image!.height! / 2,
+      })
+      .generateAsync();
+    const saveResult = await image.saveAsync({ format: ImageManipulator.SaveFormat.JPEG });
+    setState({ image: saveResult });
+  };
 
   const combo = async () =>
     await manipulate([
@@ -123,6 +165,11 @@ export default function ImageManipulatorScreen() {
     );
     setState({ image: manipResult });
   };
+
+  async function test() {
+    await testLegacyAPI(state.image!.uri);
+    await testModernAPI(state.image!.uri);
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -168,10 +215,56 @@ export default function ImageManipulatorScreen() {
           <Button style={styles.button} onPress={reset}>
             Reset photo
           </Button>
+          <Button style={styles.button} onPress={test}>
+            Run tests
+          </Button>
         </View>
       </View>
     </ScrollView>
   );
+}
+
+async function testLegacyAPI(uri: string) {
+  const timeStart = performance.now();
+  await ImageManipulator.manipulateAsync(uri, [
+    {
+      resize: {
+        width: 300,
+        height: 300,
+      },
+    },
+    {
+      rotate: 90,
+    },
+    {
+      resize: {
+        width: 250,
+      },
+    },
+    {
+      flip: ImageManipulator.FlipType.Horizontal,
+    },
+    {
+      flip: ImageManipulator.FlipType.Vertical,
+    },
+  ]);
+  const timeEnd = performance.now();
+  console.log(`testLegacyAPI: ${timeEnd - timeStart}`);
+}
+
+async function testModernAPI(uri: string) {
+  const timeStart = performance.now();
+  const image = await ImageManipulator.default
+    .load(uri)
+    .resize({ width: 300, height: 300 })
+    .rotate(90)
+    .resize({ width: 250 })
+    .flip(ImageManipulator.FlipType.Horizontal)
+    .flip(ImageManipulator.FlipType.Vertical)
+    .generateAsync();
+  await image.saveAsync({});
+  const timeEnd = performance.now();
+  console.log(`testModernAPI: ${timeEnd - timeStart}`);
 }
 
 const Button: React.FunctionComponent<TouchableOpacityProps> = ({ onPress, style, children }) => (

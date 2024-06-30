@@ -1,3 +1,5 @@
+import { SharedObject } from 'expo';
+
 // @needsAudit
 export type ImageResult = {
   /**
@@ -118,3 +120,24 @@ export type SaveOptions = {
    */
   format?: SaveFormat;
 };
+
+/**
+ * @platform ios
+ */
+export declare class Context extends SharedObject {
+  resize(size: ActionResize['resize']): Context;
+  rotate(degrees: ActionRotate['rotate']): Context;
+  flip(flipType: FlipType): Context;
+  crop(rect: ActionCrop['crop']): Context;
+
+  renderAsync(): Promise<ImageRef>;
+}
+
+/**
+ * @platform ios
+ */
+export declare class ImageRef extends SharedObject {
+  width: number;
+  height: number;
+  saveAsync(options: SaveOptions): { path: string } & ImageResult;
+}
